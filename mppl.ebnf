@@ -1,0 +1,10 @@
+Program ::= { Token | Separator } ;
+Token ::= Name | Keyword | UnsignedInteger | String | Symbol ;
+Name ::= Alphabet { Alphabet | Number } ;
+Keyword ::= "p" "r" "o" "g" "r" "a" "m" | "v" "a" "r" | "a" "r" "r" "a" "y" |
+    "o" "f" | "b" "e" "g" "i" "n" | "e" "n" "d" | "i" "f" | 
+    then | else |
+    procedure | return | call | while | do |
+    not | or | div | and | char |
+    integer | boolean | read | write |
+    readln | writeln | true | false | break ;
