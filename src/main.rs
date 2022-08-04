@@ -36,12 +36,22 @@ fn main() {
 }
 
 fn read_equals(mut input: &[char]) -> (&[char], bool) {
-    if let [':', ':', '=', rest @ ..] = input {
+    if let ['=', rest @ ..] = input {
+        input = rest;
+        (input, true)
+    } else if let [':', ':', '=', rest @ ..] = input {
         input = rest;
         (input, true)
     } else {
         (input, false)
     }
+}
+
+#[test]
+fn read_equals_test() {
+    assert_eq!(read_equals(&['"', 'x'][..]), (&['"', 'x'][..], false));
+    assert_eq!(read_equals(&['=', 'x'][..]), (&['x'][..], true));
+    assert_eq!(read_equals(&[':', ':', '=', 'x'][..]), (&['x'][..], true));
 }
 
 fn read_character(mut input: &[char]) -> (&[char], Option<char>) {
