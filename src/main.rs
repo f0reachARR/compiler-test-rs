@@ -25,13 +25,35 @@ fn main() {
     let mut input_buf: &[char] = &buf.as_str().chars().collect::<Vec<_>>();
 
     while !input_buf.is_empty() {
-        let (rest, identifier) = read_character(input_buf);
+        let (rest, identifier) = read_identifier(input_buf);
         if let Some(identifierstr) = identifier {
             println!("id: {}", identifierstr);
         } else {
             break;
         }
         input_buf = rest;
+
+        input_buf = read_space(input_buf);
+
+        let (rest, equal) = read_equals(input_buf);
+        if !equal {
+            break;
+        }
+        input_buf = rest;
+
+        input_buf = read_space(input_buf);
+
+        loop {
+            let (rest, c) = read_character(input_buf);
+            if let Some(c) = c {
+                println!("c: {}", c);
+            } else {
+                break;
+            }
+            input_buf = rest;
+
+            input_buf = read_space(input_buf);
+        }
     }
 }
 
