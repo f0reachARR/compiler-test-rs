@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 #[derive(Debug)]
 enum Token {
     Identifier(String),
-    Space,
+    Space(usize),
     Equals,
     Character(char),
     GroupBegin,
@@ -23,38 +23,43 @@ fn main() {
 
     // let input_vec: Vec<char> = &buf.as_str().chars().collect::<Vec<_>>();
     let mut input_buf: &[char] = &buf.as_str().chars().collect::<Vec<_>>();
+    let mut tokens = Vec::new();
 
     while !input_buf.is_empty() {
-        let (rest, identifier) = read_identifier(input_buf);
-        if let Some(identifierstr) = identifier {
-            println!("id: {}", identifierstr);
-        } else {
-            break;
-        }
-        input_buf = rest;
-
-        input_buf = read_space(input_buf);
-
-        let (rest, equal) = read_equals(input_buf);
-        if !equal {
-            break;
-        }
-        input_buf = rest;
-
-        input_buf = read_space(input_buf);
-
-        loop {
-            let (rest, c) = read_character(input_buf);
-            if let Some(c) = c {
-                println!("c: {}", c);
-            } else {
-                break;
-            }
+        let (rest, found) = read_equals(input_buf);
+        if found {
             input_buf = rest;
-
-            input_buf = read_space(input_buf);
+            tokens.push(Token::Equals);
+            continue;
         }
+
+        let (rest, c) = read_character(input_buf);
+        if let Some(c) = c {
+            input_buf = rest;
+            tokens.push(Token::Character(c));
+            continue;
+        }
+
+        let (rest, identifier) = read_identifier(input_buf);
+        if let Some(identifier) = identifier {
+            input_buf = rest;
+            tokens.push(Token::Identifier(identifier));
+            continue;
+        }
+
+        let (rest, size) = read_space(input_buf);
+        if size > 0 {
+            input_buf = rest;
+            tokens.push(Token::Space(size));
+            continue;
+        }
+
+        break;
     }
+
+    println!("rest: {}", input_buf.into_iter().collect::<String>());
+
+    dbg!(tokens);
 }
 
 fn read_equals(mut input: &[char]) -> (&[char], bool) {
@@ -98,18 +103,20 @@ fn read_character_test() {
     );
 }
 
-fn read_space(mut input: &[char]) -> &[char] {
+fn read_space(mut input: &[char]) -> (&[char], usize) {
+    let mut found = 0;
     while let [' ', rest @ ..] = input {
         input = rest;
+        found += 1;
     }
-    input
+    (input, found)
 }
 
 #[test]
 fn read_space_test() {
-    assert_eq!(read_space(&[' ', ' ', 'x'][..]), &['x'][..]);
-    assert_eq!(read_space(&['a', ' ', 'x'][..]), &['a', ' ', 'x'][..]);
-    assert_eq!(read_space(&[' ', ' '][..]), &[][..]);
+    assert_eq!(read_space(&[' ', ' ', 'x'][..]), (&['x'][..], 2));
+    assert_eq!(read_space(&['a', ' ', 'x'][..]), (&['a', ' ', 'x'][..], 0));
+    assert_eq!(read_space(&[' ', ' '][..]), (&[][..], 2));
 }
 
 fn read_identifier(mut input: &[char]) -> (&[char], Option<String>) {
