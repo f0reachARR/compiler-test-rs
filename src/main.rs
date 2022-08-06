@@ -5,13 +5,15 @@ enum Token {
     Identifier(String),
     Space(usize),
     Equals,
-    Character(char),
+    String(String),
     GroupBegin,
     GroupEnd,
     RepeatBegin,
     RepeatEnd,
     OptionBegin,
     OptionEnd,
+    Or,
+    Exclude,
     Separator,
     TokenEnd,
     LineEnd,
@@ -38,10 +40,10 @@ impl<'a> Tokenizer<'a> {
         self.input.len() - self.cursor.len()
     }
 
-    fn read_definition(mut self) -> Vec<PositionedToken> {
+    fn read_definition(mut self) -> Option<Vec<PositionedToken>> {
         let mut tokens = Vec::new();
         loop {
-            if let Some(t) = self.read_character() {
+            if let Some(t) = self.read_string() {
                 tokens.push(t);
             } else if let Some(t) = self.read_identifier() {
                 tokens.push(t);
@@ -57,14 +59,36 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        tokens
+
+        if self.cursor.len() > 0 {
+            None
+        } else {
+            Some(tokens)
+        }
     }
 
-    fn read_character(&mut self) -> Option<PositionedToken> {
+    fn read_string(&mut self) -> Option<PositionedToken> {
         let pos = self.get_pos();
-        if let ['"', c, '"', rest @ ..] = self.cursor {
-            self.cursor = rest;
-            Some(PositionedToken(Token::Character(*c), pos))
+        if let [start @ ('\'' | '"'), rest @ ..] = self.cursor {
+            let mut str = String::new();
+            let mut cur = rest;
+            let mut valid = false;
+            while let [c, rest @ ..] = cur {
+                cur = rest;
+                if *c != *start {
+                    str.push(*c);
+                } else {
+                    valid = true;
+                    break;
+                }
+            }
+
+            if valid {
+                self.cursor = cur;
+                Some(PositionedToken(Token::String(str), pos))
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -118,13 +142,16 @@ impl<'a> Tokenizer<'a> {
     fn read_identifier(&mut self) -> Option<PositionedToken> {
         let pos = self.get_pos();
         let mut identifier = String::new();
-        while let [c @ ('0'..='9' | 'a'..='z' | 'A'..='Z'), rest @ ..] = self.cursor {
+        let mut cursor = self.cursor;
+        while let [c @ ('0'..='9' | 'a'..='z' | 'A'..='Z' | ' '), rest @ ..] = cursor {
             identifier.push(*c);
-            self.cursor = rest;
+            cursor = rest;
         }
+        identifier = identifier.trim().to_string();
         if identifier.is_empty() {
             None
         } else {
+            self.cursor = cursor;
             Some(PositionedToken(Token::Identifier(identifier), pos))
         }
     }
@@ -163,6 +190,14 @@ impl<'a> Tokenizer<'a> {
             [';', rest @ ..] => {
                 self.cursor = rest;
                 Some(PositionedToken(Token::TokenEnd, pos))
+            }
+            ['|', rest @ ..] => {
+                self.cursor = rest;
+                Some(PositionedToken(Token::Or, pos))
+            }
+            ['-', rest @ ..] => {
+                self.cursor = rest;
+                Some(PositionedToken(Token::Exclude, pos))
             }
             _ => None,
         }
