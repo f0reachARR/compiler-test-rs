@@ -71,27 +71,17 @@ impl<'a> Tokenizer<'a> {
         let pos = self.get_pos();
         if let [start @ ('\'' | '"'), rest @ ..] = self.cursor {
             let mut str = String::new();
-            let mut cur = rest;
-            let mut valid = false;
-            while let [c, rest @ ..] = cur {
-                cur = rest;
+            let mut cursor = rest;
+            while let [c, rest @ ..] = cursor {
+                cursor = rest;
                 if *c != *start {
                     str.push(*c);
                 } else {
-                    valid = true;
-                    break;
+                    return Some(PositionedToken(Token::String(str), pos));
                 }
             }
-
-            if valid {
-                self.cursor = cur;
-                Some(PositionedToken(Token::String(str), pos))
-            } else {
-                None
-            }
-        } else {
-            None
         }
+        None
     }
 
     fn read_space(&mut self) -> Option<PositionedToken> {
