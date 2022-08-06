@@ -232,16 +232,6 @@ fn read_equals_test() {
 }
 
 #[test]
-fn read_character_test() {
-    assert_eq!(Tokenizer::new(&['a'][..]).read_character(), None);
-    assert_eq!(Tokenizer::new(&['"', 'a'][..]).read_character(), None);
-    assert_eq!(
-        Tokenizer::new(&['"', 'x', '"', 'a'][..]).read_character(),
-        Some(PositionedToken(Token::Character('x'), 0))
-    );
-}
-
-#[test]
 fn read_space_test() {
     assert_eq!(Tokenizer::new(&['a', ' ', 'x'][..]).read_space(), None);
     assert_eq!(
