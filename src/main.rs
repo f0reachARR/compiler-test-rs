@@ -2,6 +2,7 @@ use std::{fs::File, io::Read};
 
 mod lexer;
 use lexer::Tokenizer;
+mod parser;
 fn main() {
     let input = std::env::args().nth(1).expect("no input file");
     let mut file = File::open(input).expect("input file open");
