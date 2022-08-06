@@ -1,6 +1,6 @@
 use std::{fs::File, io::Read};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Token {
     Identifier(String),
     Space(usize),
@@ -13,6 +13,34 @@ enum Token {
     OptionBegin,
     OptionEnd,
     Separator,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct PositionedToken(Token, usize);
+
+#[derive(Debug)]
+struct Tokenizer<'a> {
+    input: &'a [char],
+    cursor: &'a [char],
+}
+
+impl<'a> Tokenizer<'a> {
+    fn new<'b>(input: &'b [char]) -> Tokenizer<'b> {
+        Tokenizer {
+            input,
+            cursor: input,
+        }
+    }
+
+    fn read_character(&mut self) -> Option<PositionedToken> {
+        let pos = self.input.len() - self.cursor.len();
+        if let ['"', c, '"', rest @ ..] = self.cursor {
+            self.cursor = rest;
+            Some(PositionedToken(Token::Character(*c), pos))
+        } else {
+            None
+        }
+    }
 }
 
 fn main() {
@@ -98,8 +126,8 @@ fn read_character_test() {
     );
     assert_eq!(read_character(&['"', 'x'][..]), (&['"', 'x'][..], None));
     assert_eq!(
-        read_character(&['"', 'x', '"', 'a'][..]),
-        (&['a'][..], Some('x'))
+        Tokenizer::new(&['"', 'x', '"', 'a'][..]).read_character(),
+        Some(PositionedToken(Token::Character('x'), 0))
     );
 }
 
