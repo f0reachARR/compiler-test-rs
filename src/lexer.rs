@@ -68,14 +68,13 @@ impl<'a> Tokenizer<'a> {
     fn read_string(&mut self) -> Option<PositionedToken> {
         let pos = self.get_pos();
         if let [start @ ('\'' | '"'), rest @ ..] = self.cursor {
+            self.cursor = rest;
             let mut str = String::new();
-            let mut cursor = rest;
-            while let [c, rest @ ..] = cursor {
-                cursor = rest;
+            while let [c, rest @ ..] = self.cursor {
+                self.cursor = rest;
                 if *c != *start {
                     str.push(*c);
                 } else {
-                    self.cursor = cursor;
                     return Some(PositionedToken(Token::String(str), pos));
                 }
             }
