@@ -77,6 +77,7 @@ impl<'a> Tokenizer<'a> {
                 if *c != *start {
                     str.push(*c);
                 } else {
+                    self.cursor = cursor;
                     return Some(PositionedToken(Token::String(str), pos));
                 }
             }
