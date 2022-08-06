@@ -234,6 +234,27 @@ fn read_space_test() {
     );
 }
 
+#[test]
+fn read_string_test() {
+    assert_eq!(
+        Tokenizer::new(&['\'', 'x', 'x', '\''][..]).read_string(),
+        Some(PositionedToken(Token::String(String::from("xx")), 0))
+    );
+    assert_eq!(
+        Tokenizer::new(&['\'', '"', 'x', '\''][..]).read_string(),
+        Some(PositionedToken(Token::String(String::from("\"x")), 0))
+    );
+    assert_eq!(
+        Tokenizer::new(&['\'', 'x', 'x', '"'][..]).read_string(),
+        None
+    );
+    assert_eq!(
+        Tokenizer::new(&['"', 'x', 'x', '\''][..]).read_string(),
+        None
+    );
+    assert_eq!(Tokenizer::new(&['"', 'x'][..]).read_string(), None);
+}
+
 // #[test]
 // fn read_identifier_test() {
 //     assert_eq!(
