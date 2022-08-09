@@ -18,7 +18,7 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct PositionedToken(Token, usize);
+pub struct PositionedToken(pub Token, pub usize);
 
 #[derive(Debug)]
 pub struct Tokenizer<'a> {
