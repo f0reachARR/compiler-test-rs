@@ -49,8 +49,8 @@ impl<'a> Tokenizer<'a> {
                 tokens.push(t);
             } else if let Some(t) = self.read_single_token() {
                 tokens.push(t);
-            } else if let Some(t) = self.read_space() {
-                tokens.push(t);
+            } else if let Some(_) = self.read_space() {
+                // tokens.push(t);
             } else if let Some(t) = self.read_lineend() {
                 tokens.push(t);
             } else {
