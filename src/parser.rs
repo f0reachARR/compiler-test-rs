@@ -1,4 +1,7 @@
+use crate::lexer::Token;
+
 use super::lexer::PositionedToken;
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -8,6 +11,7 @@ pub struct Parser<'a> {
 #[derive(Debug)]
 pub enum Rule {
     Character(char),
+    IdentifierRef(String),
     Exclude { from: Box<Rule>, target: Box<Rule> },
     Sequence(Vec<Box<Rule>>),
     Or(Vec<Box<Rule>>),
@@ -21,13 +25,51 @@ impl<'a> Parser<'a> {
         Parser { tokens }
     }
 
-    pub fn extract_rule(&mut self) -> Vec<Rule> {
-        let rules = Vec::new();
-        while let [token, rest @ ..] = self.tokens {}
-        rules
+    fn bump(&mut self, size: usize) {
+        self.tokens = &self.tokens[size..];
     }
 
-    pub fn convert_string_rule(str: &str) -> Vec<Rule> {
-        str.chars().map(|c| Rule::Character(c)).collect()
+    fn eat(&mut self) -> Option<Rule> {
+        None
+    }
+
+    fn eat_parentheses(&mut self) -> Option<Rule> {
+        if let [PositionedToken(token, pos), ..] = self.tokens {
+            match token {
+                &Token::GroupBegin => {
+                    self.bump(1);
+                    if let Some(inner) = self.eat() {
+                        if let [PositionedToken(Token::GroupEnd, pos), ..] = self.tokens {
+                            self.bump(1);
+                            return Some(Rule::Group(Box::new(inner)));
+                        }
+                    }
+                }
+                &Token::RepeatBegin => {
+                    self.bump(1);
+                    if let Some(inner) = self.eat() {
+                        if let [PositionedToken(Token::RepeatEnd, pos), ..] = self.tokens {
+                            self.bump(1);
+                            return Some(Rule::Group(Box::new(inner)));
+                        }
+                    }
+                }
+                &Token::OptionBegin => {
+                    self.bump(1);
+                    if let Some(inner) = self.eat() {
+                        if let [PositionedToken(Token::OptionEnd, pos), ..] = self.tokens {
+                            self.bump(1);
+                            return Some(Rule::Group(Box::new(inner)));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    pub fn convert_string_rule(&self, str: &str) -> Rule {
+        Rule::Sequence(str.chars().map(|c| Box::new(Rule::Character(c))).collect())
     }
 }
