@@ -14,13 +14,13 @@ pub struct Definition {
     pub rule: Box<Rule>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Rule {
     Character(char),
     IdentifierRef(String),
     Exclude { from: Box<Rule>, target: Box<Rule> },
     Sequence(Vec<Box<Rule>>),
-    Or { left: Box<Rule>, right: Box<Rule> },
+    Or(Vec<Box<Rule>>),
     Repeat(Box<Rule>),
     Option(Box<Rule>),
     Group(Box<Rule>),
@@ -96,75 +96,94 @@ impl<'a> Parser<'a> {
         }
         match seq.len() {
             0 => Err(self.make_error("No rule found between separator")),
-            1 => Ok(seq.pop().unwrap()),
-            _ => Ok(Box::new(Rule::Sequence(seq))),
+            1 => Ok(Box::new(seq.pop().unwrap())),
+            _ => Ok(Box::new(Rule::Sequence(
+                seq.into_iter().map(|r| Box::new(r)).collect(),
+            ))),
         }
     }
 
-    fn eat_element(&mut self) -> Result<Box<Rule>> {
-        let mut seq = Vec::new();
+    fn eat_element(&mut self) -> Result<Rule> {
+        let mut left: Option<Rule> = None;
         while let [PositionedToken(token, _), ..] = self.tokens {
             match token {
                 Token::Identifier(s) => {
+                    if left.is_some() {
+                        return Err(
+                            self.make_error("Each string operator must have infix notation")
+                        );
+                    }
                     self.bump(1);
-                    seq.push(Box::new(Rule::IdentifierRef(s.clone())));
+                    left = Some(Rule::IdentifierRef(s.clone()));
                 }
                 Token::String(s) => {
+                    if left.is_some() {
+                        return Err(
+                            self.make_error("Each string operator must have infix notation")
+                        );
+                    }
                     self.bump(1);
-                    seq.push(self.convert_string_rule(&s));
+                    left = Some(self.convert_string_rule(&s));
                 }
                 Token::Or => {
-                    if seq.len() < 1 {
+                    if left.is_none() {
                         return Err(self.make_error("No left hand on OR operator"));
                     }
 
+                    let mut rules = vec![Box::new(left.unwrap())];
+
                     self.bump(1); // Eat OR
                     let right = self.eat_element()?;
-                    let rule = Rule::Or {
-                        left: if seq.len() == 1 {
-                            seq.pop().unwrap()
-                        } else {
-                            Box::new(Rule::Sequence(seq))
-                        },
-                        right,
-                    };
-                    seq = vec![Box::new(rule)];
+                    if let Rule::Or(v) = right {
+                        rules.extend(v);
+                    } else {
+                        rules.push(Box::new(right));
+                    }
+                    left = Some(Rule::Or(rules));
                 }
                 Token::Exclude => {
-                    if seq.len() != 1 {
+                    if left.is_none() {
                         return Err(self.make_error("No left hand on Exclude operator"));
                     }
 
                     self.bump(1); // Eat Exclude
                     let right = self.eat_element()?;
-                    let rule = Rule::Exclude {
-                        from: seq.pop().unwrap(),
-                        target: right,
-                    };
-                    seq = vec![Box::new(rule)];
+                    left = Some(Rule::Exclude {
+                        from: Box::new(left.unwrap()),
+                        target: Box::new(right),
+                    });
                 }
                 Token::GroupBegin => {
+                    if left.is_some() {
+                        return Err(self.make_error("Each group must be separated"));
+                    }
                     self.bump(1);
                     let inner = self.eat_rule()?;
                     if let [PositionedToken(Token::GroupEnd, _), ..] = self.tokens {
                         self.bump(1);
-                        seq.push(Box::new(Rule::Group(inner)));
+                        left = Some(Rule::Group(inner));
                     }
                 }
                 Token::RepeatBegin => {
+                    if left.is_some() {
+                        return Err(self.make_error("Each group must be separated"));
+                    }
                     self.bump(1);
                     let inner = self.eat_rule()?;
                     if let [PositionedToken(Token::RepeatEnd, _), ..] = self.tokens {
                         self.bump(1);
-                        seq.push(Box::new(Rule::Repeat(inner)));
+                        left = Some(Rule::Repeat(inner));
                     }
                 }
                 Token::OptionBegin => {
+                    if left.is_some() {
+                        return Err(self.make_error("Each group must be separated"));
+                    }
                     self.bump(1);
                     let inner = self.eat_rule()?;
                     if let [PositionedToken(Token::OptionEnd, _), ..] = self.tokens {
                         self.bump(1);
-                        seq.push(Box::new(Rule::Option(inner)));
+                        left = Some(Rule::Option(inner));
                     }
                 }
                 _ => {
@@ -172,16 +191,14 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        match seq.len() {
-            0 => Err(self.make_error("No element found")),
-            1 => Ok(seq.pop().unwrap()),
-            _ => Ok(Box::new(Rule::Sequence(seq))),
+        if let Some(left) = left {
+            Ok(left)
+        } else {
+            Err(self.make_error("Not valid rule"))
         }
     }
 
-    pub fn convert_string_rule(&self, str: &str) -> Box<Rule> {
-        Box::new(Rule::Sequence(
-            str.chars().map(|c| Box::new(Rule::Character(c))).collect(),
-        ))
+    pub fn convert_string_rule(&self, str: &str) -> Rule {
+        Rule::Sequence(str.chars().map(|c| Box::new(Rule::Character(c))).collect())
     }
 }
