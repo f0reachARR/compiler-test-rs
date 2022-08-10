@@ -16,7 +16,7 @@ fn main() {
     if let Some(tokens) = tokenizer.read_definition() {
         // dbg!(&tokens);
         let mut parser = Parser::new(&tokens);
-        let rules = parser.eat_rule();
+        let rules = parser.eat();
 
         dbg!(rules);
     }

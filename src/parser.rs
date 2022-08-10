@@ -36,7 +36,39 @@ impl<'a> Parser<'a> {
         self.tokens = &self.tokens[size..];
     }
 
-    fn eat_single_def(&mut self) -> Option<Box<Definition>> {}
+    fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
+    pub fn eat(&mut self) -> Option<Vec<Box<Definition>>> {
+        let mut defs = Vec::new();
+        while let Some(def) = self.eat_single_def() {
+            defs.push(def);
+        }
+        if self.is_empty() {
+            Some(defs)
+        } else {
+            None
+        }
+    }
+
+    fn eat_single_def(&mut self) -> Option<Box<Definition>> {
+        if let [PositionedToken(Token::Identifier(identifier), pos), PositionedToken(Token::Equals, _), ..] =
+            self.tokens
+        {
+            self.bump(2);
+            if let Some(rule) = self.eat_rule() {
+                if let [PositionedToken(Token::TokenEnd, pos), ..] = self.tokens {
+                    self.bump(1);
+                    return Some(Box::new(Definition {
+                        identifier: identifier.clone(),
+                        rule,
+                    }));
+                }
+            }
+        }
+        None
+    }
 
     fn eat_rule(&mut self) -> Option<Box<Rule>> {
         let mut seq = Vec::new();
@@ -123,7 +155,7 @@ impl<'a> Parser<'a> {
                     if let Some(inner) = self.eat_rule() {
                         if let [PositionedToken(Token::RepeatEnd, pos), ..] = self.tokens {
                             self.bump(1);
-                            seq.push(Box::new(Rule::Group(inner)));
+                            seq.push(Box::new(Rule::Repeat(inner)));
                         }
                     }
                 }
@@ -132,7 +164,7 @@ impl<'a> Parser<'a> {
                     if let Some(inner) = self.eat_rule() {
                         if let [PositionedToken(Token::OptionEnd, pos), ..] = self.tokens {
                             self.bump(1);
-                            seq.push(Box::new(Rule::Group(inner)));
+                            seq.push(Box::new(Rule::Option(inner)));
                         }
                     }
                 }
