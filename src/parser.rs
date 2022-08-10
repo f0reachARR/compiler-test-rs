@@ -1,7 +1,7 @@
 use crate::lexer::Token;
 
 use super::lexer::PositionedToken;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
     }
 
     fn bump(&mut self, size: usize) {
-        println!("Bump: {} {:?}", size, self.tokens[0]);
+        // println!("Bump: {} {:?}", size, self.tokens[0]);
         self.tokens = &self.tokens[size..];
     }
 
@@ -40,45 +40,49 @@ impl<'a> Parser<'a> {
         self.tokens.is_empty()
     }
 
-    pub fn eat(&mut self) -> Option<Vec<Box<Definition>>> {
-        let mut defs = Vec::new();
-        while let Some(def) = self.eat_single_def() {
-            defs.push(def);
-        }
-        if self.is_empty() {
-            Some(defs)
+    fn make_error(&self, msg: &str) -> anyhow::Error {
+        if let [PositionedToken(_, pos), ..] = self.tokens {
+            anyhow::Error::msg(format!("{} {}", pos, msg.to_string()))
         } else {
-            None
+            anyhow::Error::msg(format!("Unknown position {}", msg.to_string()))
         }
     }
 
-    fn eat_single_def(&mut self) -> Option<Box<Definition>> {
-        if let [PositionedToken(Token::Identifier(identifier), pos), PositionedToken(Token::Equals, _), ..] =
+    pub fn eat(&mut self) -> Result<Vec<Box<Definition>>> {
+        let mut defs = Vec::new();
+        while !self.is_empty() {
+            defs.push(self.eat_single_def()?);
+        }
+        if self.is_empty() {
+            Ok(defs)
+        } else {
+            Err(anyhow!("No rule"))
+        }
+    }
+
+    fn eat_single_def(&mut self) -> Result<Box<Definition>> {
+        if let [PositionedToken(Token::Identifier(identifier), _), PositionedToken(Token::Equals, _), ..] =
             self.tokens
         {
             self.bump(2);
-            if let Some(rule) = self.eat_rule() {
-                if let [PositionedToken(Token::TokenEnd, pos), ..] = self.tokens {
-                    self.bump(1);
-                    return Some(Box::new(Definition {
-                        identifier: identifier.clone(),
-                        rule,
-                    }));
-                }
+            let rule = self.eat_rule()?;
+            if let [PositionedToken(Token::TokenEnd, _), ..] = self.tokens {
+                self.bump(1);
+                return Ok(Box::new(Definition {
+                    identifier: identifier.clone(),
+                    rule,
+                }));
             }
         }
-        None
+        Err(self.make_error("Definition is not valid"))
     }
 
-    fn eat_rule(&mut self) -> Option<Box<Rule>> {
+    fn eat_rule(&mut self) -> Result<Box<Rule>> {
         let mut seq = Vec::new();
         loop {
-            if let Some(rule) = self.eat_element() {
-                seq.push(rule);
-            } else {
-                return None;
-            }
-            if let [PositionedToken(token, pos), ..] = self.tokens {
+            let rule = self.eat_element()?;
+            seq.push(rule);
+            if let [PositionedToken(token, _), ..] = self.tokens {
                 match token {
                     Token::Separator => {
                         self.bump(1);
@@ -91,15 +95,15 @@ impl<'a> Parser<'a> {
             }
         }
         match seq.len() {
-            0 => None,
-            1 => Some(seq.pop().unwrap()),
-            _ => Some(Box::new(Rule::Sequence(seq))),
+            0 => Err(self.make_error("No rule found between separator")),
+            1 => Ok(seq.pop().unwrap()),
+            _ => Ok(Box::new(Rule::Sequence(seq))),
         }
     }
 
-    fn eat_element(&mut self) -> Option<Box<Rule>> {
+    fn eat_element(&mut self) -> Result<Box<Rule>> {
         let mut seq = Vec::new();
-        while let [PositionedToken(token, pos), ..] = self.tokens {
+        while let [PositionedToken(token, _), ..] = self.tokens {
             match token {
                 Token::Identifier(s) => {
                     self.bump(1);
@@ -111,61 +115,56 @@ impl<'a> Parser<'a> {
                 }
                 Token::Or => {
                     if seq.len() < 1 {
-                        return None;
+                        return Err(self.make_error("No left hand on OR operator"));
                     }
 
                     self.bump(1); // Eat OR
-                    if let Some(right) = self.eat_element() {
-                        let rule = Rule::Or {
-                            left: if seq.len() == 1 {
-                                seq.pop().unwrap()
-                            } else {
-                                Box::new(Rule::Sequence(seq))
-                            },
-                            right,
-                        };
-                        seq = vec![Box::new(rule)];
-                    }
+                    let right = self.eat_element()?;
+                    let rule = Rule::Or {
+                        left: if seq.len() == 1 {
+                            seq.pop().unwrap()
+                        } else {
+                            Box::new(Rule::Sequence(seq))
+                        },
+                        right,
+                    };
+                    seq = vec![Box::new(rule)];
                 }
                 Token::Exclude => {
                     if seq.len() != 1 {
-                        return None;
+                        return Err(self.make_error("No left hand on Exclude operator"));
                     }
 
                     self.bump(1); // Eat Exclude
-                    if let Some(right) = self.eat_element() {
-                        let rule = Rule::Exclude {
-                            from: seq.pop().unwrap(),
-                            target: right,
-                        };
-                        seq = vec![Box::new(rule)];
-                    }
+                    let right = self.eat_element()?;
+                    let rule = Rule::Exclude {
+                        from: seq.pop().unwrap(),
+                        target: right,
+                    };
+                    seq = vec![Box::new(rule)];
                 }
                 Token::GroupBegin => {
                     self.bump(1);
-                    if let Some(inner) = self.eat_rule() {
-                        if let [PositionedToken(Token::GroupEnd, pos), ..] = self.tokens {
-                            self.bump(1);
-                            seq.push(Box::new(Rule::Group(inner)));
-                        }
+                    let inner = self.eat_rule()?;
+                    if let [PositionedToken(Token::GroupEnd, _), ..] = self.tokens {
+                        self.bump(1);
+                        seq.push(Box::new(Rule::Group(inner)));
                     }
                 }
                 Token::RepeatBegin => {
                     self.bump(1);
-                    if let Some(inner) = self.eat_rule() {
-                        if let [PositionedToken(Token::RepeatEnd, pos), ..] = self.tokens {
-                            self.bump(1);
-                            seq.push(Box::new(Rule::Repeat(inner)));
-                        }
+                    let inner = self.eat_rule()?;
+                    if let [PositionedToken(Token::RepeatEnd, _), ..] = self.tokens {
+                        self.bump(1);
+                        seq.push(Box::new(Rule::Repeat(inner)));
                     }
                 }
                 Token::OptionBegin => {
                     self.bump(1);
-                    if let Some(inner) = self.eat_rule() {
-                        if let [PositionedToken(Token::OptionEnd, pos), ..] = self.tokens {
-                            self.bump(1);
-                            seq.push(Box::new(Rule::Option(inner)));
-                        }
+                    let inner = self.eat_rule()?;
+                    if let [PositionedToken(Token::OptionEnd, _), ..] = self.tokens {
+                        self.bump(1);
+                        seq.push(Box::new(Rule::Option(inner)));
                     }
                 }
                 _ => {
@@ -174,9 +173,9 @@ impl<'a> Parser<'a> {
             }
         }
         match seq.len() {
-            0 => None,
-            1 => Some(seq.pop().unwrap()),
-            _ => Some(Box::new(Rule::Sequence(seq))),
+            0 => Err(self.make_error("No element found")),
+            1 => Ok(seq.pop().unwrap()),
+            _ => Ok(Box::new(Rule::Sequence(seq))),
         }
     }
 
