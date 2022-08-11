@@ -106,88 +106,69 @@ impl<'a> Parser<'a> {
     fn eat_element(&mut self) -> Result<Rule> {
         let mut left: Option<Rule> = None;
         while let [PositionedToken(token, _), ..] = self.tokens {
-            match token {
-                Token::Identifier(s) => {
-                    if left.is_some() {
-                        return Err(
-                            self.make_error("Each string operator must have infix notation")
-                        );
-                    }
-                    self.bump(1);
-                    left = Some(Rule::IdentifierRef(s.clone()));
-                }
-                Token::String(s) => {
-                    if left.is_some() {
-                        return Err(
-                            self.make_error("Each string operator must have infix notation")
-                        );
-                    }
-                    self.bump(1);
-                    left = Some(self.convert_string_rule(&s));
-                }
-                Token::Or => {
-                    if left.is_none() {
-                        return Err(self.make_error("No left hand on OR operator"));
-                    }
+            if let Some(l) = &left {
+                match token {
+                    Token::Or => {
+                        let mut rules = vec![Box::new(l.clone())];
 
-                    let mut rules = vec![Box::new(left.unwrap())];
-
-                    self.bump(1); // Eat OR
-                    let right = self.eat_element()?;
-                    if let Rule::Or(v) = right {
-                        rules.extend(v);
-                    } else {
-                        rules.push(Box::new(right));
+                        self.bump(1); // Eat OR
+                        let right = self.eat_element()?;
+                        if let Rule::Or(v) = right {
+                            rules.extend(v);
+                        } else {
+                            rules.push(Box::new(right));
+                        }
+                        left = Some(Rule::Or(rules));
                     }
-                    left = Some(Rule::Or(rules));
+                    Token::Exclude => {
+                        self.bump(1); // Eat Exclude
+                        let right = self.eat_element()?;
+                        left = Some(Rule::Exclude {
+                            from: Box::new(l.clone()),
+                            target: Box::new(right),
+                        });
+                    }
+                    _ => {
+                        break;
+                    }
                 }
-                Token::Exclude => {
-                    if left.is_none() {
-                        return Err(self.make_error("No left hand on Exclude operator"));
-                    }
-
-                    self.bump(1); // Eat Exclude
-                    let right = self.eat_element()?;
-                    left = Some(Rule::Exclude {
-                        from: Box::new(left.unwrap()),
-                        target: Box::new(right),
-                    });
-                }
-                Token::GroupBegin => {
-                    if left.is_some() {
-                        return Err(self.make_error("Each group must be separated"));
-                    }
-                    self.bump(1);
-                    let inner = self.eat_rule()?;
-                    if let [PositionedToken(Token::GroupEnd, _), ..] = self.tokens {
+            } else {
+                match token {
+                    Token::GroupBegin => {
                         self.bump(1);
-                        left = Some(Rule::Group(inner));
+                        let inner = self.eat_rule()?;
+                        if let [PositionedToken(Token::GroupEnd, _), ..] = self.tokens {
+                            self.bump(1);
+                            left = Some(Rule::Group(inner));
+                        }
                     }
-                }
-                Token::RepeatBegin => {
-                    if left.is_some() {
-                        return Err(self.make_error("Each group must be separated"));
-                    }
-                    self.bump(1);
-                    let inner = self.eat_rule()?;
-                    if let [PositionedToken(Token::RepeatEnd, _), ..] = self.tokens {
+                    Token::RepeatBegin => {
                         self.bump(1);
-                        left = Some(Rule::Repeat(inner));
+                        let inner = self.eat_rule()?;
+                        if let [PositionedToken(Token::RepeatEnd, _), ..] = self.tokens {
+                            self.bump(1);
+                            left = Some(Rule::Repeat(inner));
+                        }
                     }
-                }
-                Token::OptionBegin => {
-                    if left.is_some() {
-                        return Err(self.make_error("Each group must be separated"));
-                    }
-                    self.bump(1);
-                    let inner = self.eat_rule()?;
-                    if let [PositionedToken(Token::OptionEnd, _), ..] = self.tokens {
+                    Token::OptionBegin => {
                         self.bump(1);
-                        left = Some(Rule::Option(inner));
+                        let inner = self.eat_rule()?;
+                        if let [PositionedToken(Token::OptionEnd, _), ..] = self.tokens {
+                            self.bump(1);
+                            left = Some(Rule::Option(inner));
+                        }
                     }
-                }
-                _ => {
-                    break;
+                    Token::Identifier(s) => {
+                        self.bump(1);
+                        left = Some(Rule::IdentifierRef(s.clone()));
+                    }
+                    Token::String(s) => {
+                        self.bump(1);
+                        left = Some(self.convert_string_rule(&s));
+                    }
+                    _ => {
+                        break;
+                    }
                 }
             }
         }
