@@ -14,7 +14,7 @@ pub struct Definition {
     pub rule: Box<Rule>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rule {
     Character(char),
     IdentifierRef(String),
@@ -179,7 +179,58 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn convert_string_rule(&self, str: &str) -> Rule {
+    fn convert_string_rule(&self, str: &str) -> Rule {
         Rule::Sequence(str.chars().map(|c| Box::new(Rule::Character(c))).collect())
     }
+}
+
+#[test]
+fn convert_string_rule_test() {
+    let parser = Parser::new(&[]);
+    assert_eq!(
+        parser.convert_string_rule("test"),
+        Rule::Sequence(
+            [
+                Rule::Character('t'),
+                Rule::Character('e'),
+                Rule::Character('s'),
+                Rule::Character('t'),
+            ]
+            .into_iter()
+            .map(|r| Box::new(r))
+            .collect()
+        )
+    )
+}
+
+#[test]
+fn string_rule_test() {
+    let tokens = &[PositionedToken(Token::String("test".to_string()), 0)][..];
+    let mut parser = Parser::new(tokens);
+    assert_eq!(
+        parser.eat_element().unwrap(),
+        Rule::Sequence(
+            [
+                Rule::Character('t'),
+                Rule::Character('e'),
+                Rule::Character('s'),
+                Rule::Character('t'),
+            ]
+            .into_iter()
+            .map(|r| Box::new(r))
+            .collect()
+        )
+    );
+    assert!(parser.is_empty());
+}
+
+#[test]
+fn identifier_rule_test() {
+    let tokens = &[PositionedToken(Token::Identifier("test".to_string()), 0)][..];
+    let mut parser = Parser::new(tokens);
+    assert_eq!(
+        parser.eat_element().unwrap(),
+        Rule::IdentifierRef("test".to_string())
+    );
+    assert!(parser.is_empty());
 }
