@@ -20,6 +20,8 @@ fn main() {
         let mut parser = Parser::new(&tokens);
         let rules = parser.eat();
 
-        dbg!(rules);
+        let mut gramconv = slr::ebnf2gram::Ebnf2Gram::process(rules.unwrap()).unwrap();
+        slr::grammer::display_grammer_set(&gramconv.grammer_set);
+        dbg!(gramconv.identifier_map);
     }
 }
