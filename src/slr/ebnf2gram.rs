@@ -30,7 +30,7 @@ impl Ebnf2Gram {
             let selfref = state
                 .identifier_map
                 .get(identifier)
-                .ok_or(anyhow::anyhow!("Unknown identifier"))?
+                .ok_or(anyhow::anyhow!("Unknown identifier {}", identifier))?
                 .clone();
             state.iterate(&mut grammer, rule.as_ref())?;
             state.grammer_set.entry(selfref).or_default().push(grammer);
@@ -48,10 +48,10 @@ impl Ebnf2Gram {
                 let gref = self
                     .identifier_map
                     .get(i)
-                    .ok_or(anyhow::anyhow!("Unknown identifier"))?;
+                    .ok_or(anyhow::anyhow!("Unknown identifier {}", i))?;
                 grammer.push(Grammer::Grammer(*gref));
             }
-            Rule::Exclude { from, target } => todo!(),
+            Rule::Exclude { from: _, target: _ } => todo!(),
             Rule::Sequence(inside_rule) => {
                 for rule in inside_rule {
                     self.iterate(grammer, rule.as_ref())?;
@@ -66,9 +66,40 @@ impl Ebnf2Gram {
                 }
                 grammer.push(Grammer::Grammer(next));
             }
-            Rule::Repeat(_) => todo!(),
-            Rule::Option(_) => todo!(),
-            Rule::Group(_) => todo!(),
+            Rule::Repeat(rule) => {
+                let next = self.next_identifier();
+                // Repeated grammer
+                let mut new_grammer: Vec<Grammer> = Vec::new();
+                self.iterate(&mut new_grammer, rule.as_ref())?;
+                new_grammer.push(Grammer::Grammer(next.clone()));
+                self.grammer_set.entry(next).or_default().push(new_grammer);
+                // Empty grammer
+                let new_grammer = vec![Grammer::Empty];
+                self.grammer_set.entry(next).or_default().push(new_grammer);
+
+                grammer.push(Grammer::Grammer(next));
+            }
+            Rule::Option(rule) => {
+                let next = self.next_identifier();
+                // Once grammer grammer
+                let mut new_grammer: Vec<Grammer> = Vec::new();
+                self.iterate(&mut new_grammer, rule.as_ref())?;
+                self.grammer_set.entry(next).or_default().push(new_grammer);
+                // Empty grammer
+                let new_grammer = vec![Grammer::Empty];
+                self.grammer_set.entry(next).or_default().push(new_grammer);
+
+                grammer.push(Grammer::Grammer(next));
+            }
+            Rule::Group(rule) => {
+                let next = self.next_identifier();
+                // Once grammer grammer
+                let mut new_grammer: Vec<Grammer> = Vec::new();
+                self.iterate(&mut new_grammer, rule.as_ref())?;
+                self.grammer_set.entry(next).or_default().push(new_grammer);
+
+                grammer.push(Grammer::Grammer(next));
+            }
         }
 
         Ok(())
