@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::grammer::{Grammer, GrammerIdentifier, GrammerSet};
 use crate::parser::{Definition, Rule};
@@ -7,6 +7,8 @@ use anyhow::Result;
 pub struct Ebnf2Gram {
     pub grammer_set: GrammerSet,
     pub identifier_map: HashMap<String, GrammerIdentifier>,
+    pub end_characters: HashSet<char>,
+    pub identifiers: HashSet<u64>,
     identifier_counter: u64,
 }
 
@@ -21,6 +23,8 @@ impl Ebnf2Gram {
 
         let mut state = Self {
             grammer_set: HashMap::new(),
+            end_characters: HashSet::new(),
+            identifiers: identifier_map.iter().map(|(_, x)| x.0).collect(),
             identifier_map,
             identifier_counter,
         };
@@ -42,6 +46,7 @@ impl Ebnf2Gram {
     fn iterate(&mut self, grammer: &mut Vec<Grammer>, rule: &Rule) -> Result<()> {
         match rule {
             Rule::Character(c) => {
+                self.end_characters.insert(*c);
                 grammer.push(Grammer::Character(*c));
             }
             Rule::IdentifierRef(i) => {
@@ -108,6 +113,7 @@ impl Ebnf2Gram {
     fn next_identifier(&mut self) -> GrammerIdentifier {
         let next = self.identifier_counter;
         self.identifier_counter += 1;
+        self.identifiers.insert(next);
         GrammerIdentifier(next)
     }
 }

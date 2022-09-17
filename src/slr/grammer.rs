@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct GrammerIdentifier(pub u64);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Grammer {
     Empty, // 空語
     Grammer(GrammerIdentifier),
@@ -11,6 +11,12 @@ pub enum Grammer {
 }
 
 pub type GrammerSet = HashMap<GrammerIdentifier, Vec<Vec<Grammer>>>;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct GrammerAnnotation {
+    pub endchars: HashSet<char>,
+    pub identifiers: HashSet<u64>,
+}
 
 pub fn display_grammer_set(set: &GrammerSet) {
     for (id, grammers) in set {
