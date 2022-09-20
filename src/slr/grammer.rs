@@ -3,9 +3,10 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct GrammerIdentifier(pub u64);
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Grammer {
     Empty, // 空語
+    Dot,
     Grammer(GrammerIdentifier),
     Character(char),
 }
