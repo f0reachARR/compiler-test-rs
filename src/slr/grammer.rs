@@ -28,6 +28,9 @@ pub fn display_grammer_set(set: &GrammerSet) {
                     Grammer::Empty => {
                         print!("ε ");
                     }
+                    Grammer::Dot => {
+                        print!("* ");
+                    }
                     Grammer::Grammer(GrammerIdentifier(id)) => {
                         print!("<{}> ", id);
                     }

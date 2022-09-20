@@ -25,6 +25,9 @@ pub fn create_first_set(set: &GrammerSet, char: &Grammer) -> HashSet<Grammer> {
         Grammer::Character(c) => {
             first_set.insert(Grammer::Character(*c));
         }
+        Grammer::Dot => {
+            panic!("Unexpected dot");
+        }
     }
     first_set
 }
