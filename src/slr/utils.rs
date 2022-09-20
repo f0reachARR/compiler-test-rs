@@ -97,6 +97,16 @@ pub fn create_follow_set(
 
 // 再帰かなあ
 pub fn create_closure_set(set: &GrammerSet, input: &GrammerSet) -> GrammerSet {
-    let mut additional_set = GrammerSet::new();
-    for (id, grammers) in input {}
+    let mut output = input.clone();
+    for (id, grammers) in input {
+        for grammer in grammers {
+            for i in 0..grammer.len() - 1 {
+                if grammer[i] != Grammer::Dot {
+                    continue;
+                }
+                if let Grammer::Grammer(ref_id) = grammer[i + 1] {}
+            }
+        }
+    }
+    output
 }
