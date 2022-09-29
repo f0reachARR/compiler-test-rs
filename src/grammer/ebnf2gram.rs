@@ -1,14 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Grammer, GrammerIdentifier, GrammerSet};
+use super::{
+    create_first_set, create_follow_set, Grammer, GrammerAnnotation, GrammerIdentifier, GrammerSet,
+};
 use crate::parser::{Definition, Rule};
 use anyhow::Result;
 
 pub struct Ebnf2Gram {
-    pub grammer_set: GrammerSet,
-    pub identifier_map: HashMap<String, GrammerIdentifier>,
-    pub end_characters: HashSet<char>,
-    pub identifiers: HashSet<u64>,
+    grammer_set: GrammerSet,
+    identifier_map: HashMap<String, GrammerIdentifier>,
+    end_characters: HashSet<char>,
+    identifiers: HashSet<u64>,
     identifier_counter: u64,
 }
 
@@ -115,5 +117,37 @@ impl Ebnf2Gram {
         self.identifier_counter += 1;
         self.identifiers.insert(next);
         GrammerIdentifier(next)
+    }
+
+    pub fn get_grammer_set(&self) -> &GrammerSet {
+        &self.grammer_set
+    }
+
+    pub fn get_identifier_map(&self) -> &HashMap<String, GrammerIdentifier> {
+        &self.identifier_map
+    }
+
+    pub fn create_annotations(&self) -> GrammerAnnotation {
+        let mut first_set = HashMap::new();
+
+        for char in self.end_characters.iter() {
+            let first = create_first_set(&self.grammer_set, &Grammer::Character(*char));
+            first_set.insert(Grammer::Character(*char), first);
+        }
+
+        for id in self.identifiers.iter() {
+            let first =
+                create_first_set(&self.grammer_set, &Grammer::Grammer(GrammerIdentifier(*id)));
+            first_set.insert(Grammer::Grammer(GrammerIdentifier(*id)), first);
+        }
+
+        let follow = create_follow_set(&self.grammer_set);
+
+        GrammerAnnotation {
+            endchars: self.end_characters.clone(),
+            identifiers: self.identifiers.clone(),
+            first_set,
+            follow_set: follow,
+        }
     }
 }

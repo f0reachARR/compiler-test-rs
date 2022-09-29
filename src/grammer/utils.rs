@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Grammer, GrammerAnnotation, GrammerIdentifier, GrammerSet};
+use super::{Grammer, GrammerIdentifier, GrammerSet};
 
 pub fn create_first_set(set: &GrammerSet, char: &Grammer) -> HashSet<Grammer> {
     let mut first_set = HashSet::new();
@@ -32,10 +32,7 @@ pub fn create_first_set(set: &GrammerSet, char: &Grammer) -> HashSet<Grammer> {
     first_set
 }
 
-pub fn create_follow_set(
-    set: &GrammerSet,
-    annotation: &GrammerAnnotation,
-) -> HashMap<GrammerIdentifier, HashSet<Grammer>> {
+pub fn create_follow_set(set: &GrammerSet) -> HashMap<GrammerIdentifier, HashSet<Grammer>> {
     let mut follow_set_map: HashMap<GrammerIdentifier, HashSet<Grammer>> = HashMap::new();
 
     loop {

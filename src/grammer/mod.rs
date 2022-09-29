@@ -17,6 +17,8 @@ pub type GrammerSet = HashMap<GrammerIdentifier, Vec<Vec<Grammer>>>;
 pub struct GrammerAnnotation {
     pub endchars: HashSet<char>,
     pub identifiers: HashSet<u64>,
+    pub first_set: HashMap<Grammer, HashSet<Grammer>>,
+    pub follow_set: HashMap<GrammerIdentifier, HashSet<Grammer>>,
 }
 
 pub fn display_grammer_set(set: &GrammerSet) {
