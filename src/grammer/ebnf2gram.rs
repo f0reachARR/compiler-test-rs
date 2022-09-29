@@ -74,29 +74,54 @@ impl Ebnf2Gram {
                 grammer.push(Grammer::Grammer(next));
             }
             Rule::Repeat(rule) => {
-                let next = self.next_identifier();
-                // Repeated grammer
+                let target_id = self.next_identifier();
+                let wrap_id = self.next_identifier();
+                // Target grammer
                 let mut new_grammer: Vec<Grammer> = Vec::new();
                 self.iterate(&mut new_grammer, rule.as_ref())?;
-                new_grammer.push(Grammer::Grammer(next.clone()));
-                self.grammer_set.entry(next).or_default().push(new_grammer);
-                // Empty grammer
-                let new_grammer = vec![Grammer::Empty];
-                self.grammer_set.entry(next).or_default().push(new_grammer);
+                new_grammer.push(Grammer::Grammer(wrap_id.clone()));
+                self.grammer_set
+                    .entry(target_id)
+                    .or_default()
+                    .push(new_grammer);
 
-                grammer.push(Grammer::Grammer(next));
+                // Ref grammer
+                let new_grammer = vec![Grammer::Empty];
+                self.grammer_set
+                    .entry(wrap_id)
+                    .or_default()
+                    .push(new_grammer);
+                let new_grammer = vec![Grammer::Grammer(target_id)];
+                self.grammer_set
+                    .entry(wrap_id)
+                    .or_default()
+                    .push(new_grammer);
+
+                grammer.push(Grammer::Grammer(wrap_id));
             }
             Rule::Option(rule) => {
-                let next = self.next_identifier();
+                let target_id = self.next_identifier();
+                let wrap_id = self.next_identifier();
                 // Once grammer grammer
                 let mut new_grammer: Vec<Grammer> = Vec::new();
                 self.iterate(&mut new_grammer, rule.as_ref())?;
-                self.grammer_set.entry(next).or_default().push(new_grammer);
-                // Empty grammer
+                self.grammer_set
+                    .entry(target_id)
+                    .or_default()
+                    .push(new_grammer);
+                // Ref grammer
                 let new_grammer = vec![Grammer::Empty];
-                self.grammer_set.entry(next).or_default().push(new_grammer);
+                self.grammer_set
+                    .entry(wrap_id)
+                    .or_default()
+                    .push(new_grammer);
+                let new_grammer = vec![Grammer::Grammer(target_id)];
+                self.grammer_set
+                    .entry(wrap_id)
+                    .or_default()
+                    .push(new_grammer);
 
-                grammer.push(Grammer::Grammer(next));
+                grammer.push(Grammer::Grammer(wrap_id));
             }
             Rule::Group(rule) => {
                 let next = self.next_identifier();
