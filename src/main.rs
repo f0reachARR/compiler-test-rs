@@ -5,6 +5,8 @@ use lexer::Tokenizer;
 mod parser;
 use parser::Parser;
 
+mod grammer;
+mod ll;
 mod slr;
 fn main() {
     let input = std::env::args().nth(1).expect("no input file");
@@ -20,8 +22,8 @@ fn main() {
         let mut parser = Parser::new(&tokens);
         let rules = parser.eat();
 
-        let gramconv = slr::ebnf2gram::Ebnf2Gram::process(rules.unwrap()).unwrap();
-        slr::grammer::display_grammer_set(&gramconv.grammer_set);
+        let gramconv = grammer::Ebnf2Gram::process(rules.unwrap()).unwrap();
+        grammer::display_grammer_set(&gramconv.grammer_set);
         dbg!(gramconv.identifier_map);
     }
 }

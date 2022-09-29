@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::grammer::{Grammer, GrammerAnnotation, GrammerIdentifier, GrammerSet};
+use super::{Grammer, GrammerAnnotation, GrammerIdentifier, GrammerSet};
 
 pub fn create_first_set(set: &GrammerSet, char: &Grammer) -> HashSet<Grammer> {
     let mut first_set = HashSet::new();

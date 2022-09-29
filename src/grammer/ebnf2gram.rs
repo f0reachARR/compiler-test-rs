@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::grammer::{Grammer, GrammerIdentifier, GrammerSet};
+use super::{Grammer, GrammerIdentifier, GrammerSet};
 use crate::parser::{Definition, Rule};
 use anyhow::Result;
 
